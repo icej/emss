@@ -1,0 +1,2 @@
+-module(syncdemo_server).
+-compile(export_all).
