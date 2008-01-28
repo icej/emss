@@ -24,9 +24,10 @@ do_accept(LSocket) ->
 do_echo(Socket) ->
     case gen_tcp:recv(Socket, 0) of
         {ok, Data} ->
-	    io:format("client send: ~w",[Data]),
+            S=Data,
+	    io:format("client send: ~s\r\n",[S]),
             gen_tcp:send(Socket, Data),
-            do_echo(Socket);
+           do_echo(Socket);
         {error, closed} ->
             ok
     end.
