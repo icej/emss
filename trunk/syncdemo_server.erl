@@ -8,15 +8,24 @@
 
 listen() ->
     {ok, LSocket} = gen_tcp:listen(7000, ?TCP_OPTIONS),
-    do_accept(LSocket).
+    register(server,self()),
+    register(accept, spawn(do_accept(LSocket))),
+    do_echo().
 
 %% The accept gets its own function so we can loop easily.  Yay tail
 %% recursion!
+do_echo()->
+	receive
+		{recvmsg, Data} ->
+			io:format("client send: ~s\r\n",[Data])
+	end,
+	do_echo().
 
 do_accept(LSocket) ->
     {ok, Socket} = gen_tcp:accept(LSocket),
     Pid = spawn(fun() -> do_echo(Socket) end),
     gen_tcp:controlling_process(Socket,Pid),
+   
     do_accept(LSocket).
 
 %% Sit in a loop, echoing everything that comes in on the socket.
@@ -25,7 +34,8 @@ do_accept(LSocket) ->
 do_echo(Socket) ->
     receive
         {tcp, Socket, Bin} ->
-	    io:format("client send: ~s\r\n",[Bin]),
+	    server!{recvmsg,Bin},
+	    %%io:format("client send: ~s\r\n",[Bin]),
             gen_tcp:send(Socket, Bin),
            do_echo(Socket);
         {tcp_closed, Socket} ->
