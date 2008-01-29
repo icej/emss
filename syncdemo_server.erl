@@ -1,7 +1,7 @@
 -module(syncdemo_server).
 -compile(export_all).
 
--define(TCP_OPTIONS,[list, {packet, 0}, {active, false}, {reuseaddr, true}]).
+-define(TCP_OPTIONS,[list, {packet, 0}, {active, true}, {reuseaddr, true}]).
 
 %% Listen on the given port, accept the first incoming connection and
 %% launch the echo loop on it.
@@ -15,19 +15,19 @@ listen() ->
 
 do_accept(LSocket) ->
     {ok, Socket} = gen_tcp:accept(LSocket),
-    spawn(fun() -> do_echo(Socket) end),
+    Pid = spawn(fun() -> do_echo(Socket) end),
+    gen_tcp:controlling_process(Socket,Pid),
     do_accept(LSocket).
 
 %% Sit in a loop, echoing everything that comes in on the socket.
 %% Exits cleanly on client disconnect.
 
 do_echo(Socket) ->
-    case gen_tcp:recv(Socket, 0) of
-        {ok, Data} ->
-            S=Data,
-	    io:format("client send: ~s\r\n",[S]),
-            gen_tcp:send(Socket, Data),
+    receive
+        {tcp, Socket, Bin} ->
+	    io:format("client send: ~s\r\n",[Bin]),
+            gen_tcp:send(Socket, Bin),
            do_echo(Socket);
-        {error, closed} ->
+        {tcp_closed, Socket} ->
             ok
     end.
